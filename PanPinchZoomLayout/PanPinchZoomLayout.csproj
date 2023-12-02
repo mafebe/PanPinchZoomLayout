@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net7.0;net7.0-android;net7.0-ios</TargetFrameworks>
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.19041.0</TargetFrameworks>
+        <!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
+        <!-- <TargetFrameworks>$(TargetFrameworks);net7.0-tizen</TargetFrameworks> -->
+        <UseMaui>true</UseMaui>
+        <SingleProject>true</SingleProject>
+        <ImplicitUsings>disable</ImplicitUsings>
+
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">12.4</SupportedOSPlatformVersion>
+<!--        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>-->
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+        <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+<!--        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>-->
+        <RootNamespace>BNDK.Maui</RootNamespace>
+        <Nullable>enable</Nullable>
+        <Version>0.3.0</Version>
+        <Title>PanPinchZoomLayout.Maui</Title>
+        <Authors>Matthias Benedek</Authors>
+        <Description>A Maui-Layout which has the capability to handle pan, pinch-to-zoom and tap-to-zoom.
+Utilize included ViewBox-Layout in order to handle large views without loss of quality.</Description>
+        <Copyright>© Matthias Benedek</Copyright>
+        <RepositoryUrl>https://github.com/mafebe/PanPinchZoomLayout</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>Pinch-to-Zoom, Pan, Zoom, Zoom Image, Layout, Maui</PackageTags>
+        <Company>Matthias Benedek</Company>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <AssemblyName>$(MSBuildProjectName).Maui</AssemblyName>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <None Include="..\README.md">
+        <Pack>True</Pack>
+        <PackagePath>\</PackagePath>
+      </None>
+    </ItemGroup>
+
+</Project>
