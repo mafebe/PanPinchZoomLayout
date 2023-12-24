@@ -17,7 +17,7 @@
 <!--        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>-->
         <RootNamespace>BNDK.Maui</RootNamespace>
         <Nullable>enable</Nullable>
-        <Version>0.3.0</Version>
+        <Version>0.4.0</Version>
         <Title>PanPinchZoomLayout.Maui</Title>
         <Authors>Matthias Benedek</Authors>
         <Description>A Maui-Layout which has the capability to handle pan, pinch-to-zoom and tap-to-zoom.
