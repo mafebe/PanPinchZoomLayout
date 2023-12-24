@@ -77,6 +77,7 @@ public class PanPinchZoomLayout : ViewBox
     
     private bool _doubleTapped;
     private bool _ignoreNextTap;
+    private bool _disableExtentChangedEventHandling;
     
     private bool _panRunning;
     private double _panStartX;
@@ -121,7 +122,7 @@ public class PanPinchZoomLayout : ViewBox
 
     private void SetExtent(RectF? newExtent)
     {
-        if (Content == null)
+        if (Content == null || _disableExtentChangedEventHandling)
             return;
         
         if (!_sizeAllocated)
@@ -154,10 +155,10 @@ public class PanPinchZoomLayout : ViewBox
         // determine translation
         var centerTranslationX = (extent.Center.X * fittingScale) - (Width / 2) + (GetUniformHorizontalSizeDiff() / 2);
         var centerTranslationY = (extent.Center.Y * fittingScale) - (Height / 2) + (GetUniformVerticalSizeDiff() / 2);
-        var extentCenterOffsetX = extent.Width / 2;
-        var extentCenterOffsetY = extent.Height / 2;
-        var translationX = -centerTranslationX.Clamp(0 + extentCenterOffsetX, GetMaxTranslationX() - extentCenterOffsetX);
-        var translationY = -centerTranslationY.Clamp(0 + extentCenterOffsetY, GetMaxTranslationY() - extentCenterOffsetY);
+        var horizontalSizeOffset = GetUniformHorizontalSizeDiff() / 2;
+        var verticalSizeOffset = GetUniformVerticalSizeDiff() / 2;
+        var translationX = (-centerTranslationX).Clamp(-(GetMaxTranslationX(scale) + horizontalSizeOffset), 0);
+        var translationY = (-centerTranslationY).Clamp(-(GetMaxTranslationY(scale) + verticalSizeOffset), 0);
         // apply scale
         await ScaleContentTo(scale, translationX, translationY);
     }
@@ -165,22 +166,22 @@ public class PanPinchZoomLayout : ViewBox
     protected override void OnSizeAllocated(double width, double height)
     {
         base.OnSizeAllocated(width, height);
-        _sizeAllocated = true;
         if (Content == null)
             return;
         // Content not yet initialized and extent has to be applied...
-        if (_pendingExtent.HasValue && (Content.Width < 0 || Content.Height < 0))
-        {
+        if (Content.Width <= 0 || Content.Height <= 0)
             Content.SizeChanged += ContentOnSizeChanged;
-        }
+        else
+            _sizeAllocated = true;
     }
 
     private void ContentOnSizeChanged(object? sender, EventArgs e)
     {
-        if (Content == null)
+        if (Content == null || Content.Width <= 0 || Content.Height <= 0)
             return;
         // immediately unsubscribe sizeChange-Event
         Content.SizeChanged -= ContentOnSizeChanged;
+        _sizeAllocated = true;
         // check for pending extent and apply it
         if (_pendingExtent.HasValue)
             SetExtent(_pendingExtent);
@@ -292,6 +293,7 @@ public class PanPinchZoomLayout : ViewBox
 #pragma warning restore CS4014
         await Content.TranslateTo(0, 0, 250U, Easing.CubicInOut);
         _xOffset = _yOffset = 0;
+        UpdateExtent(_xOffset, _yOffset);
     }
 
     private async Task ScaleContentTo(double targetScale, Point center, uint length = 250U, Easing? easing = null)
@@ -334,6 +336,7 @@ public class PanPinchZoomLayout : ViewBox
         // save offset
         _xOffset = Content.TranslationX;
         _yOffset = Content.TranslationY;
+        UpdateExtent(_xOffset, _yOffset);
     }
 
     private void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
@@ -368,7 +371,7 @@ public class PanPinchZoomLayout : ViewBox
 
             case GestureStatus.Running:
                 System.Diagnostics.Debug.WriteLine($"[Gesture] Pan Running: xOffset={_xOffset}|yOffset={_yOffset}");
-                var maxTranslationX = GetMaxTranslationX();
+                var maxTranslationX = GetMaxTranslationX(Content.Scale);
                 if (maxTranslationX > 0)
                 {
                     var positionOffsetX = GetUniformHorizontalSizeDiff() / 2f;
@@ -376,7 +379,7 @@ public class PanPinchZoomLayout : ViewBox
                     Content.TranslationX = translationX;
                 }
 
-                var maxTranslationY = GetMaxTranslationY();
+                var maxTranslationY = GetMaxTranslationY(Content.Scale);
                 if (maxTranslationY > 0)
                 {
                     var verticalSizeOffset = GetUniformVerticalSizeDiff() / 2f;
@@ -391,23 +394,40 @@ public class PanPinchZoomLayout : ViewBox
                 _panRunning = false;
                 _xOffset = Content.TranslationX;
                 _yOffset = Content.TranslationY;
+                UpdateExtent(_xOffset, _yOffset);
                 System.Diagnostics.Debug.WriteLine($"[Gesture] Pan Completed: xOffset={_xOffset}|yOffset={_yOffset}");
                 break;
         }
     }
 
-    private double GetMaxTranslationX()
+    private void UpdateExtent(double translationX, double translationY)
     {
         if (Content == null)
-            return 0;
-        return (Content.Width * Content.Scale - (float)Width / (float)Content.ScaleX) * Content.ScaleX;
+            return;
+        var scaleX = (float)(Content.Scale * Content.ScaleX);
+        var scaleY = (float)(Content.Scale * Content.ScaleY);
+        var fTranslationX = (float)Math.Abs(translationX);
+        var fTranslationY = (float)Math.Abs(translationY);
+        var visibleWidth = Width / scaleX;
+        var visibleHeight = Height / scaleY;
+        var extent = RectF.FromLTRB(fTranslationX, fTranslationY, (float)Math.Min(Content.Width, fTranslationX + visibleWidth), (float)Math.Min(Content.Height, fTranslationY + visibleHeight));
+        _disableExtentChangedEventHandling = true;
+        Extent = extent;
+        _disableExtentChangedEventHandling = false;
     }
 
-    private double GetMaxTranslationY()
+    private double GetMaxTranslationX(double forScale)
     {
         if (Content == null)
             return 0;
-        return (Content.Height * Content.Scale - (float)Height / (float)Content.ScaleY) * Content.ScaleY;
+        return (Content.Width * forScale - (float)Width / (float)Content.ScaleX) * Content.ScaleX;
+    }
+
+    private double GetMaxTranslationY(double forScale)
+    {
+        if (Content == null)
+            return 0;
+        return (Content.Height * forScale - (float)Height / (float)Content.ScaleY) * Content.ScaleY;
     }
 
     private float GetUniformVerticalSizeDiff()
@@ -484,6 +504,7 @@ public class PanPinchZoomLayout : ViewBox
                 _xOffset = Content.TranslationX;
                 _yOffset = Content.TranslationY;
                 FireScaleChanged(_pinchStartScale, Content.Scale);
+                UpdateExtent(_xOffset, _yOffset);
                 break;
         }
     }
